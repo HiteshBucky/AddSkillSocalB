@@ -7,6 +7,58 @@ const Comment = require("../models/comment");
 
 // https://stackoverflow.com/questions/34967482/lookup-on-objectids-in-an-array
 
+exports.updateUser = (req, res) => {
+
+	User.findByIdAndUpdate(
+	  { _id: req.params.userId },
+	  { $set: req.body },
+	  { new: true, useFindAndModify: false },
+	  (err, user) => {
+	    if (err) {
+	      return res.status(400).json({
+	        error: "You are not authorized to update this user",
+	        "message" : "Unable to update user"
+	      });
+	    }
+	    user.salt = undefined;
+	    user.encry_password = undefined;
+	    res.json(user);
+	  }
+	);
+}
+
+
+exports.getPost = (req, res) => {
+	Post.findById({_id : req.params.postId}, (err, post) => {
+		if(err) {
+			res.status(400).json({
+				error : "Post not found",
+				message : "Post not found"
+			})
+		}
+		res.json(post)
+	})
+}
+
+exports.updatePost = (req, res) => {
+
+	console.log("Updaed psot", req.body, " ", req.params.userId, " postId", req.params.postId)
+	Post.findByIdAndUpdate(
+	  { _id: req.params.postId },
+	  { $set: req.body },
+	  { new: true, useFindAndModify: false },
+	  (err, newPost) => {
+	    if (err) {
+	      return res.status(400).json({
+	        error: "You are not authorized to update this post",
+	        "message" : "Unable to update post"
+	      });
+	    }
+	    res.json(newPost);
+	  }
+	);
+}
+
 exports.createPost = (req, res) => {
 
 	console.log('Hello createPost', req.params.userId )
@@ -176,10 +228,6 @@ exports.createUnfollow = (req, res) => {
 }
 
 
-
-
-
-
 exports.getAllUser = (req, res) => {
 	User.find().exec((err, users) => {
 		if (err) {
@@ -280,7 +328,7 @@ exports.getAllFollowers = (req, res) => {
 	User.aggregate([
 		{ $match : { "_id" : mongoose.Types.ObjectId(req.params.userId) }},
 		{ $lookup: { from: 'users', localField: "followers", foreignField: "_id", as: "list"} },
-	   	{ $project : {"email" : 1, "followers" : 1, "follows" : 1, "username": 1,  "createdAt" : 1, list : {"email" : 1, "username" : 1} }},
+	   	{ $project : {"email" : 1, "followers" : 1, "follows" : 1, "username": 1,  "createdAt" : 1, list : {"email" : 1, "username" : 1, _id : 1} }},
 	]).exec((err, doc) => {
 		if(err) res.send(err)
 		console.log()
@@ -292,10 +340,12 @@ exports.getAllFollowing = (req, res) => {
 	console.log('getAllFollowing', req.params.userId)
 	User.aggregate([
 		{ $match : { "_id" : mongoose.Types.ObjectId(req.params.userId) }},
-		{ $lookup : { from: 'users', localField: "follows", foreignField: "_id", as: "follows" } }
+		{ $lookup : { from: 'users', localField: "follows", foreignField: "_id", as: "list" } },
+		{ $project : {"email" : 1, "followers" : 1, "follows" : 1, "username": 1,  "createdAt" : 1, list : {"email" : 1, "username" : 1, _id : 1} }},
 	]).exec((err, doc) => {
 		if(err) res.send(err)
-		res.json(doc)
+		console.log(doc)
+		res.json(doc[0].list)
 	})
 }
 
@@ -321,3 +371,4 @@ exports.checkFollow = (req, res) => {
 	    res.json({ follow : false })
 	})
 }
+
